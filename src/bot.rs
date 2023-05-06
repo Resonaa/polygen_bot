@@ -1,5 +1,4 @@
 use crate::{
-    consts::SCORE_POWER,
     map::{LandType, Map, Pos},
     BotData,
 };
@@ -66,7 +65,8 @@ impl Bot {
             for neighbour in self.gm.neighbours(from) {
                 let land = &self.gm[neighbour];
 
-                if land.color != self.my_color && !self.teammates.contains(&land.color)
+                if land.color != self.my_color
+                    && !self.teammates.contains(&land.color)
                     && matches!(land.r#type, LandType::City | LandType::Land)
                     && neighbour != to
                 {
@@ -249,7 +249,7 @@ impl Bot {
 
                 while let Some((cur, amount, length, ans)) = q.pop_front() {
                     if cur == target {
-                        let score = amount as f64 / (length as f64).powf(SCORE_POWER);
+                        let score = amount as f64 / (length as f64);
 
                         if score > tmp_score && !(amount < 0 && length < 2) {
                             tmp_score = score;
@@ -269,6 +269,12 @@ impl Bot {
                     self.rng.shuffle(&mut neighbours);
 
                     for nxt in neighbours {
+                        if self.gm[nxt].r#type == LandType::General
+                            && self.teammates.contains(&self.gm[nxt].color)
+                        {
+                            continue;
+                        }
+
                         vis.entry(nxt).or_insert_with(|| {
                             if cur == from {
                                 q.push_back((nxt, amount + get_score(nxt), length + 1, Some(nxt)));

@@ -23,7 +23,7 @@ pub struct GameStart {
     pub maybe_map: MaybeMap,
 
     #[serde(rename = "myColor")]
-    pub my_color: u8,
+    pub my_color: i32,
 }
 
 pub type Patch = Vec<(Pos, MaybeLand)>;

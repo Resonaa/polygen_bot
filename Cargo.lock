@@ -746,8 +746,6 @@ dependencies = [
  "lazy_static",
  "log",
  "parking_lot",
- "regex",
- "reqwest",
  "rust_socketio",
  "serde",
  "serde_json",

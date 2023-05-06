@@ -1,6 +1,5 @@
 use crate::{
     bot::Bot,
-    consts::WS_URL,
     event::{self, callback},
     map::Map,
     AutoReady, BotData,
@@ -41,7 +40,7 @@ pub fn new_bot(config: &'static BotData) -> Result<()> {
     let global_teams = Arc::new(Mutex::new(Vec::new()));
 
     let open = move |_, socket: RawClient| {
-        info!("{} connected", config.name);
+        info!("{} connected", config.bot.name);
         socket.emit("joinRoom", json!(config.bot.room))?;
         vote(&socket, config)?;
         ready(&socket, config)
@@ -54,7 +53,7 @@ pub fn new_bot(config: &'static BotData) -> Result<()> {
         let game_start: GameStart = serde_json::from_str(&payload)?;
 
         let mut bot = bot.lock();
-        bot.my_color = game_start.my_color;
+        bot.my_color = if game_start.my_color == -1 { 0 } else { game_start.my_color as u8};
         bot.gm = Map::from(game_start.maybe_map);
 
         Ok(())
@@ -81,6 +80,7 @@ pub fn new_bot(config: &'static BotData) -> Result<()> {
 
     let bot = global_bot.clone();
     let is_ready = global_is_ready.clone();
+    let teams = global_teams.clone();
     let win = move |payload: String, socket| {
         let winner: &str = serde_json::from_str(&payload)?;
 
@@ -93,7 +93,28 @@ pub fn new_bot(config: &'static BotData) -> Result<()> {
 
         *is_ready.lock() = false;
 
-        ready(&socket, config)
+        ready(&socket, config)?;
+
+        if let AutoReady::Conditional { more_than } = config.bot.auto_ready {
+            let teams = teams.lock();
+            let count = teams
+                .iter()
+                .filter(|(id, _)| *id != 0)
+                .flat_map(|(_, players)| players)
+                .count();
+
+            let mut is_ready = is_ready.lock();
+
+            if count > more_than && !*is_ready {
+                *is_ready = true;
+                socket.emit("ready", json!(()))?;
+            } else if count <= more_than && *is_ready {
+                *is_ready = false;
+                socket.emit("ready", json!(()))?;
+            }
+        }
+
+        Ok(())
     };
 
     let is_ready = global_is_ready;
@@ -137,7 +158,7 @@ pub fn new_bot(config: &'static BotData) -> Result<()> {
 
         if bot.teammates.is_empty() {
             let teams = teams.lock();
-            let bot_name = config.name.to_string();
+            let bot_name = config.bot.name.to_string();
 
             for (color, username, _, _) in rank {
                 if color != -1
@@ -154,10 +175,10 @@ pub fn new_bot(config: &'static BotData) -> Result<()> {
         Ok(())
     };
 
-    ClientBuilder::new(WS_URL)
+    ClientBuilder::new(config.base_url)
         .opening_header("cookie", config.bot.cookie)
         .on("open", callback(open))
-        .on("close", move |_, _| error!("{} disconnected", config.name))
+        .on("close", move |_, _| error!("{} disconnected", config.bot.name))
         .on("gameStart", callback(game_start))
         .on("patch", callback(patch))
         .on("win", callback(win))

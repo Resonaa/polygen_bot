@@ -1,12 +1,16 @@
+base_url = "https://polygen.tk"
+
 [[bots]]
 cookie = "__session=xxxxxx"
 room = "161"                     # the first bot in `161`
 auto_ready = true                # always ready
+name = "Bot"
 
 [[bots]]
 cookie = "__session=xxxxxx"
 room = "161"                     # another bot in `161`
 auto_ready = { more_than = 3 }   # ready only when there are more than 3 players
+name = "Bot_2"
 
 [rooms]
 Test = { mode = "六边形", map = "随机地图", speed = 1 }
