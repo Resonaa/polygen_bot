@@ -17,7 +17,7 @@ where
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 pub struct GameStart {
     #[serde(rename = "maybeMap")]
     pub maybe_map: MaybeMap,

@@ -1,9 +1,9 @@
 use crate::{
-    map::{LandType, Map, Pos},
+    map::{Land, LandType, Map, Pos},
     BotData,
 };
 use fastrand::Rng;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashSet, VecDeque};
 
 type Movement = (Pos, Pos, bool);
 
@@ -36,8 +36,7 @@ impl Bot {
 
         let mut half_tag = false;
 
-        if self.gm.accessible(to)
-            && to_land.color != self.my_color
+        if to_land.color != self.my_color
             && to_land.color != 0
             && (from_land.amount as i32 - 1) / 2 > to_land.amount as i32
             && !self.teammates.contains(&to_land.color)
@@ -137,43 +136,37 @@ impl Bot {
 
         self.rng.shuffle(&mut moves);
 
-        let get_score = |&from: &Pos, &to: &Pos| {
-            let from_land = &self.gm[from];
-            let to_land = &self.gm[to];
-
-            let mut score = match to_land.r#type {
-                LandType::General => 1,
-                LandType::City if to_land.color != 0 => 2,
-                LandType::City => 4,
-                LandType::Land if to_land.color != 0 => 3,
-                LandType::Land => 5,
-                _ => 9,
+        const fn get_score(from_land: &Land, to_land: &Land) -> u8 {
+            let from_score = match from_land.r#type {
+                LandType::Land => 1,
+                LandType::City => 2,
+                LandType::General => 3,
+                _ => 4,
             };
 
-            if from_land.r#type == LandType::Land
-                && matches!(to_land.r#type, LandType::General | LandType::City)
-            {
-                score -= 20 - (from_land.amount - to_land.amount).min(10) as i8;
+            let to_score = match to_land.r#type {
+                LandType::General => 10,
+                LandType::City if to_land.color != 0 => 20,
+                LandType::City => 40,
+                LandType::Land if to_land.color != 0 => 30,
+                LandType::Land => 50,
+                _ => 90,
+            };
+
+            from_score + to_score
+        }
+
+        moves.sort_unstable_by(|&(from_a, to_a), &(from_b, to_b)| {
+            let score_a = get_score(&self.gm[from_a], &self.gm[to_a]);
+            let score_b = get_score(&self.gm[from_b], &self.gm[to_b]);
+
+            if score_a != score_b {
+                score_a.cmp(&score_b)
+            } else {
+                (self.gm[from_b].amount - self.gm[to_b].amount)
+                    .cmp(&(self.gm[from_a].amount - self.gm[to_a].amount))
             }
-
-            let (_, _, half_tag) = self.move_to(from, to);
-
-            let from_remain = if half_tag { from_land.amount / 2 } else { 1 };
-
-            for neighbour in self.gm.neighbours(from) {
-                if self.gm[neighbour].color != self.my_color
-                    && self.gm[neighbour].amount > from_remain + 1
-                    && neighbour != to
-                {
-                    score += 10;
-                    break;
-                }
-            }
-
-            score
-        };
-
-        moves.sort_unstable_by_key(|(from, to)| get_score(from, to));
+        });
 
         match moves.first() {
             Some(&(from, to)) => {
@@ -217,7 +210,7 @@ impl Bot {
         let mut new_from = None;
 
         let mut q = VecDeque::new();
-        let mut vis = HashMap::new();
+        let mut vis = HashSet::new();
 
         let mut found_enemy = false;
 
@@ -245,11 +238,12 @@ impl Bot {
                 vis.clear();
 
                 q.push_back((from, get_score(from), 0, None));
-                vis.insert(from, ());
+                vis.insert(from);
 
                 while let Some((cur, amount, length, ans)) = q.pop_front() {
                     if cur == target {
-                        let score = amount as f64 / (length as f64);
+                        let score =
+                            amount as f64 / (length as f64).powf(self.config.bot.score_power);
 
                         if score > tmp_score && !(amount < 0 && length < 2) {
                             tmp_score = score;
@@ -271,17 +265,16 @@ impl Bot {
                     for nxt in neighbours {
                         if self.gm[nxt].r#type == LandType::General
                             && self.teammates.contains(&self.gm[nxt].color)
+                            || !vis.insert(nxt)
                         {
                             continue;
                         }
 
-                        vis.entry(nxt).or_insert_with(|| {
-                            if cur == from {
-                                q.push_back((nxt, amount + get_score(nxt), length + 1, Some(nxt)));
-                            } else {
-                                q.push_back((nxt, amount + get_score(nxt), length + 1, ans));
-                            }
-                        });
+                        if cur == from {
+                            q.push_back((nxt, amount + get_score(nxt), length + 1, Some(nxt)));
+                        } else {
+                            q.push_back((nxt, amount + get_score(nxt), length + 1, ans));
+                        }
                     }
                 }
 

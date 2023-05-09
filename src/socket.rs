@@ -6,7 +6,7 @@ use crate::{
 };
 use anyhow::Result;
 use parking_lot::Mutex;
-use rust_socketio::{ClientBuilder, RawClient};
+use rust_socketio::{client::Client, ClientBuilder, RawClient};
 use serde_json::json;
 use std::sync::Arc;
 
@@ -34,7 +34,7 @@ fn vote(socket: &RawClient, config: &BotData) -> Result<()> {
     Ok(())
 }
 
-pub fn new_bot(config: &'static BotData) -> Result<()> {
+pub fn new_bot(config: &'static BotData) -> Result<Client> {
     let global_bot = Arc::new(Mutex::new(Bot::new(config)));
     let global_is_ready = Arc::new(Mutex::new(false));
     let global_teams = Arc::new(Mutex::new(Vec::new()));
@@ -53,7 +53,11 @@ pub fn new_bot(config: &'static BotData) -> Result<()> {
         let game_start: GameStart = serde_json::from_str(&payload)?;
 
         let mut bot = bot.lock();
-        bot.my_color = if game_start.my_color == -1 { 0 } else { game_start.my_color as u8};
+        bot.my_color = if game_start.my_color == -1 {
+            0
+        } else {
+            game_start.my_color as u8
+        };
         bot.gm = Map::from(game_start.maybe_map);
 
         Ok(())
@@ -163,6 +167,7 @@ pub fn new_bot(config: &'static BotData) -> Result<()> {
             for (color, username, _, _) in rank {
                 if color != -1
                     && (color as u8) != bot.my_color
+                    && username != bot_name
                     && teams.iter().any(|(_, players)| {
                         players.contains(&bot_name) && players.contains(&username)
                     })
@@ -175,10 +180,12 @@ pub fn new_bot(config: &'static BotData) -> Result<()> {
         Ok(())
     };
 
-    ClientBuilder::new(config.base_url)
+    let client = ClientBuilder::new(config.base_url)
         .opening_header("cookie", config.bot.cookie)
         .on("open", callback(open))
-        .on("close", move |_, _| error!("{} disconnected", config.bot.name))
+        .on("close", move |_, _| {
+            error!("{} disconnected", config.bot.name)
+        })
         .on("gameStart", callback(game_start))
         .on("patch", callback(patch))
         .on("win", callback(win))
@@ -186,5 +193,5 @@ pub fn new_bot(config: &'static BotData) -> Result<()> {
         .on("rank", callback(rank))
         .connect()?;
 
-    Ok(())
+    Ok(client)
 }

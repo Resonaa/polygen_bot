@@ -1,8 +1,8 @@
 use anyhow::Result;
 use lazy_static::lazy_static;
-use log::info;
+use log::{info, warn};
 use polygen_bot::{socket::new_bot, BotData, Config};
-use std::{fs, thread};
+use std::{fs, sync::mpsc::channel};
 
 lazy_static! {
     static ref CONFIG: String = fs::read_to_string("config.toml").unwrap();
@@ -12,7 +12,7 @@ lazy_static! {
 
             let mut ans = Vec::new();
 
-            for bot in config.bots{
+            for bot in config.bots {
                 ans.push(BotData {
                     bot,
                     room: config.rooms.get(&bot.room).copied(),
@@ -33,11 +33,23 @@ fn main() -> Result<()> {
         .filter_level(log::LevelFilter::Info)
         .init();
 
+    let mut clients = Vec::new();
+
     for bot_data in BOT_DATA.iter() {
-        new_bot(bot_data)?;
+        clients.push(new_bot(bot_data)?);
     }
 
-    loop {
-        thread::park();
+    let (tx, rx) = channel();
+
+    ctrlc::set_handler(move || tx.send(()).expect("Could not send signal on channel."))?;
+
+    rx.recv()?;
+
+    warn!("Shutting down...");
+
+    for client in clients {
+        client.disconnect()?;
     }
+
+    Ok(())
 }

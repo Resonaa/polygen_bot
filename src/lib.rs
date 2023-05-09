@@ -20,6 +20,10 @@ const fn default_calc_cnt() -> u8 {
     1
 }
 
+const fn default_score_power() -> f64 {
+    1.0
+}
+
 #[derive(Deserialize, Clone, Copy, Debug)]
 pub struct BotConfig<'a> {
     pub cookie: &'a str,
@@ -30,6 +34,12 @@ pub struct BotConfig<'a> {
 
     #[serde(default = "default_calc_cnt")]
     pub calc_cnt: u8,
+
+    #[serde(default = "default_score_power")]
+    pub score_power: f64,
+
+    #[serde(default)]
+    pub flag: bool,
 }
 
 #[derive(Deserialize, Clone, Copy, Debug)]
@@ -52,5 +62,5 @@ pub struct Config<'a> {
 pub struct BotData {
     pub bot: BotConfig<'static>,
     pub room: Option<RoomConfig<'static>>,
-    pub base_url: &'static str
+    pub base_url: &'static str,
 }
