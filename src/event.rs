@@ -26,8 +26,12 @@ pub struct GameStart {
     pub my_color: i32,
 }
 
-pub type Patch = Vec<(Pos, MaybeLand)>;
+pub type Updates = Vec<(Pos, MaybeLand)>;
+pub type Rank = Vec<(i32, String, u32, u32)>;
+#[derive(Deserialize)]
+pub struct Patch {
+    pub updates: Updates,
+    pub rank: Rank,
+}
 
 pub type UpdateTeams = Vec<(usize, Vec<String>)>;
-
-pub type Rank = Vec<(i32, String, u32, u32)>;

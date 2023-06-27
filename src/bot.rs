@@ -78,7 +78,7 @@ impl Bot {
         (from, to, half_tag)
     }
 
-    fn new_target(&self) -> Option<Pos> {
+    fn new_target(&mut self) -> Option<Pos> {
         let mut targets = Vec::new();
 
         for (pos, land) in self.gm.iter() {

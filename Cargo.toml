@@ -12,9 +12,10 @@ lazy_static = "1.4"
 anyhow = "1.0"
 env_logger = "0.10"
 log = "0.4"
-fastrand = "1.9"
+fastrand = "2.0"
 parking_lot = "0.12"
-ctrlc = { version = "3.2", features = ["termination"] }
+ctrlc = { version = "3.4", features = ["termination"] }
+lz-str = "0.2"
 
 [profile.release]
 lto = true

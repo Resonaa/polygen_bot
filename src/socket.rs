@@ -1,6 +1,6 @@
 use crate::{
     bot::Bot,
-    event::{self, callback},
+    event::{self, callback, UpdateTeams},
     map::Map,
     AutoReady, BotData,
 };
@@ -37,7 +37,7 @@ fn vote(socket: &RawClient, config: &BotData) -> Result<()> {
 pub fn new_bot(config: &'static BotData) -> Result<Client> {
     let global_bot = Arc::new(Mutex::new(Bot::new(config)));
     let global_is_ready = Arc::new(Mutex::new(false));
-    let global_teams = Arc::new(Mutex::new(Vec::new()));
+    let global_teams = Arc::new(Mutex::new(UpdateTeams::new()));
 
     let open = move |_, socket: RawClient| {
         info!("{} connected", config.bot.name);
@@ -64,14 +64,17 @@ pub fn new_bot(config: &'static BotData) -> Result<Client> {
     };
 
     let bot = global_bot.clone();
+    let teams = global_teams.clone();
     let patch = move |payload: String, socket: RawClient| {
         use event::Patch;
 
-        let patch: Patch = serde_json::from_str(&payload)?;
+        let data = lz_str::decompress_from_utf16(&serde_json::from_str::<String>(&payload)?).unwrap();
+        let string = String::from_utf16(data.as_slice())?;
+        let patch: Patch = serde_json::from_str(&string)?;
 
         let mut bot = bot.lock();
 
-        for (pos, data) in patch {
+        for (pos, data) in patch.updates {
             bot.gm[pos].patch(data);
         }
 
@@ -79,10 +82,27 @@ pub fn new_bot(config: &'static BotData) -> Result<Client> {
             socket.emit("move", json!(movement))?;
         }
 
+        if bot.teammates.is_empty() {
+            let teams = teams.lock();
+            let bot_name = config.bot.name.to_string();
+
+            for (color, username, _, _) in patch.rank {
+                if color != -1
+                    && (color as u8) != bot.my_color
+                    && username != bot_name
+                    && teams.iter().any(|(_, players)| {
+                        players.contains(&bot_name) && players.contains(&username)
+                    })
+                {
+                    bot.teammates.push(color as u8);
+                }
+            }
+        }
+
         Ok(())
     };
 
-    let bot = global_bot.clone();
+    let bot = global_bot;
     let is_ready = global_is_ready.clone();
     let teams = global_teams.clone();
     let win = move |payload: String, socket| {
@@ -122,10 +142,8 @@ pub fn new_bot(config: &'static BotData) -> Result<Client> {
     };
 
     let is_ready = global_is_ready;
-    let teams = global_teams.clone();
+    let teams = global_teams;
     let update_teams = move |payload: String, socket: RawClient| {
-        use event::UpdateTeams;
-
         let mut teams = teams.lock();
 
         *teams = serde_json::from_str::<UpdateTeams>(&payload)?;
@@ -151,35 +169,6 @@ pub fn new_bot(config: &'static BotData) -> Result<Client> {
         Ok(())
     };
 
-    let bot = global_bot;
-    let teams = global_teams;
-    let rank = move |payload: String, _: RawClient| {
-        use event::Rank;
-
-        let rank: Rank = serde_json::from_str(&payload)?;
-
-        let mut bot = bot.lock();
-
-        if bot.teammates.is_empty() {
-            let teams = teams.lock();
-            let bot_name = config.bot.name.to_string();
-
-            for (color, username, _, _) in rank {
-                if color != -1
-                    && (color as u8) != bot.my_color
-                    && username != bot_name
-                    && teams.iter().any(|(_, players)| {
-                        players.contains(&bot_name) && players.contains(&username)
-                    })
-                {
-                    bot.teammates.push(color as u8);
-                }
-            }
-        }
-
-        Ok(())
-    };
-
     let client = ClientBuilder::new(config.base_url)
         .opening_header("cookie", config.bot.cookie)
         .on("open", callback(open))
@@ -190,7 +179,6 @@ pub fn new_bot(config: &'static BotData) -> Result<Client> {
         .on("patch", callback(patch))
         .on("win", callback(win))
         .on("updateTeams", callback(update_teams))
-        .on("rank", callback(rank))
         .connect()?;
 
     Ok(client)
