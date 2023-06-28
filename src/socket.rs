@@ -53,12 +53,13 @@ pub fn new_bot(config: &'static BotData) -> Result<Client> {
         let game_start: GameStart = serde_json::from_str(&payload)?;
 
         let mut bot = bot.lock();
+        bot.target = None;
+        bot.gm = Map::from(game_start.maybe_map);
         bot.my_color = if game_start.my_color == -1 {
             0
         } else {
             game_start.my_color as u8
         };
-        bot.gm = Map::from(game_start.maybe_map);
 
         Ok(())
     };
