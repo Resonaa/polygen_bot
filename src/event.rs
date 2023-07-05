@@ -1,4 +1,4 @@
-use crate::map::{MaybeLand, MaybeMap, Pos};
+use crate::map::{MaybeLand, MaybeMap};
 use anyhow::Result;
 use rust_socketio::{Payload, RawClient};
 use serde::Deserialize;
@@ -26,7 +26,7 @@ pub struct GameStart {
     pub my_color: i32,
 }
 
-pub type Updates = Vec<(Pos, MaybeLand)>;
+pub type Updates = Vec<(usize, MaybeLand)>;
 pub type Rank = Vec<(i32, String, u32, u32)>;
 #[derive(Deserialize)]
 pub struct Patch {

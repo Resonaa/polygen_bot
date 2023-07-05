@@ -69,13 +69,17 @@ pub fn new_bot(config: &'static BotData) -> Result<Client> {
     let patch = move |payload: String, socket: RawClient| {
         use event::Patch;
 
-        let data = lz_str::decompress_from_utf16(&serde_json::from_str::<String>(&payload)?).unwrap();
+        let data =
+            lz_str::decompress_from_utf16(&serde_json::from_str::<String>(&payload)?).unwrap();
         let string = String::from_utf16(data.as_slice())?;
         let patch: Patch = serde_json::from_str(&string)?;
 
         let mut bot = bot.lock();
 
-        for (pos, data) in patch.updates {
+        for (id, data) in patch.updates {
+            let y = (id - 1) % bot.gm.width + 1;
+            let x = (id - y) / bot.gm.width + 1;
+            let pos = (x, y);
             bot.gm[pos].patch(data);
         }
 

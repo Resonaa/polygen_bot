@@ -15,7 +15,7 @@ log = "0.4"
 fastrand = "2.0"
 parking_lot = "0.12"
 ctrlc = { version = "3.4", features = ["termination"] }
-lz-str = "0.2"
+lz-str = { version = "0.2", features = ["rustc-hash"] }
 
 [profile.release]
 lto = true

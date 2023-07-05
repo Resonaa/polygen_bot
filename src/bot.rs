@@ -38,7 +38,7 @@ impl Bot {
 
         if to_land.color != self.my_color
             && to_land.color != 0
-            && (from_land.amount as i32 - 1) / 2 > to_land.amount as i32
+            && (from_land.amount - 1) / 2 > to_land.amount
             && !self.teammates.contains(&to_land.color)
         {
             for neighbour in self.gm.neighbours(from) {
@@ -199,9 +199,9 @@ impl Bot {
             let land = &self.gm[pos];
 
             if land.color == self.my_color || self.teammates.contains(&land.color) {
-                land.amount as i32 - 1
+                land.amount - 1
             } else {
-                -(land.amount as i32) - 1
+                -land.amount - 1
             }
         };
 

@@ -40,14 +40,14 @@ impl Default for LandType {
 pub struct MaybeLand {
     pub c: Option<u8>,
     pub t: Option<u8>,
-    pub a: Option<u32>,
+    pub a: Option<i32>,
 }
 
 #[derive(Clone, Copy, Default)]
 pub struct Land {
     pub color: u8,
     pub r#type: LandType,
-    pub amount: u32,
+    pub amount: i32,
 }
 
 impl Land {
@@ -60,7 +60,7 @@ impl Land {
             self.r#type = LandType::from(r#type);
         }
         if let Some(amount) = maybe_land.a {
-            self.amount = amount;
+            self.amount += amount;
         }
     }
 
