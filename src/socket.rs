@@ -91,7 +91,7 @@ pub fn new_bot(config: &'static BotData) -> Result<Client> {
             let teams = teams.lock();
             let bot_name = config.bot.name.to_string();
 
-            for (color, username, _, _) in patch.rank {
+            for (_, color, username, _, _) in patch.rank {
                 if color != -1
                     && (color as u8) != bot.my_color
                     && username != bot_name

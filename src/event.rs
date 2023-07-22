@@ -27,7 +27,7 @@ pub struct GameStart {
 }
 
 pub type Updates = Vec<(usize, MaybeLand)>;
-pub type Rank = Vec<(i32, String, u32, u32)>;
+pub type Rank = Vec<(Option<f64>, i32, String, u32, u32)>;
 #[derive(Deserialize)]
 pub struct Patch {
     pub updates: Updates,
