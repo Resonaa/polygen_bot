@@ -87,20 +87,19 @@ pub fn new_bot(config: &'static BotData) -> Result<Client> {
             socket.emit("move", json!(movement))?;
         }
 
-        if bot.teammates.is_empty() {
-            let teams = teams.lock();
-            let bot_name = config.bot.name.to_string();
+        bot.teammates.clear();
+        let teams = teams.lock();
+        let bot_name = config.bot.name.to_string();
 
-            for (_, color, username, _, _) in patch.rank {
-                if color != -1
-                    && (color as u8) != bot.my_color
-                    && username != bot_name
-                    && teams.iter().any(|(_, players)| {
-                        players.contains(&bot_name) && players.contains(&username)
-                    })
-                {
-                    bot.teammates.push(color as u8);
-                }
+        for (_, color, username, _, _) in patch.rank {
+            if color != -1
+                && (color as u8) != bot.my_color
+                && username != bot_name
+                && teams
+                    .iter()
+                    .any(|(_, players)| players.contains(&bot_name) && players.contains(&username))
+            {
+                bot.teammates.push(color as u8);
             }
         }
 

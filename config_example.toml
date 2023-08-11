@@ -1,4 +1,4 @@
-base_url = "https://polygen.tk"
+base_url = "https://polygen.fun"
 
 [[bots]]
 cookie = "__session=xxxxxx"
